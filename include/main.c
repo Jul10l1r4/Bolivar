@@ -140,14 +140,14 @@ void format_size(char* buf, struct stat *stat){
         }
     }
 }
-
+// Manipulation of data in server files
 void handle_directory_request(int out_fd, int dir_fd, char *filename){
     char buf[MAXLINE], m_time[32], size[16];
     struct stat statbuf;
     sprintf(buf, "HTTP/1.1 200 OK\r\n%s%s%s%s%s",
             "Content-Type: text/html\r\n\r\n",
             "<html><head><style>",
-            "body{font-family: monospace; font-size: 13px;}",
+            "body{font-family: medium-content-sans-serif-font,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubuntu,Cantarell,'Open Sans','Helvetica Neue', sans-serif; font-size: 13px;}",
             "td {padding: 1.5px 6px;}",
             "</style></head><body><table>\n");
     writen(out_fd, buf, strlen(buf));
@@ -160,14 +160,24 @@ void handle_directory_request(int out_fd, int dir_fd, char *filename){
         }
         if ((ffd = openat(dir_fd, dp->d_name, O_RDONLY)) == -1){
             perror(dp->d_name);
+						printf("Error in acess this file %s",dp->d_name);
             continue;
         }
+				if (dp->d_name == "index.html")
+				{
+						// Here put functional of print HTML the file index.html		
+				}
+
         fstat(ffd, &statbuf);
         strftime(m_time, sizeof(m_time),
                  "%Y-%m-%d %H:%M", localtime(&statbuf.st_mtime));
         format_size(size, &statbuf);
-        if(S_ISREG(statbuf.st_mode) || S_ISDIR(statbuf.st_mode)){
+
+        if(S_ISREG(statbuf.st_mode) || S_ISDIR(statbuf.st_mode))
+				{
+						// For terminate the function
             char *d = S_ISDIR(statbuf.st_mode) ? "/" : "";
+
             sprintf(buf, "<tr><td><a href=\"%s%s\">%s%s</a></td><td>%s</td><td>%s</td></tr>\n",
                     dp->d_name, d, dp->d_name, d, m_time, size);
             writen(out_fd, buf, strlen(buf));

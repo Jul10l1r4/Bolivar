@@ -1,7 +1,7 @@
 #!/bin/bash
 
 chmod +x run.sh
-./run.sh
+time ./run.sh
 if [ $? != 0 ]; then
 				echo "HOUVE UM ERRO"
 				exit 1
