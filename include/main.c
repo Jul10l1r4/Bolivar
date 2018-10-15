@@ -16,7 +16,7 @@
 #include <unistd.h>
 
 /* Included from the files, we functions */
-/*#include "include/mimetypes.h"*/
+#include "mimetypes.h"
 
 #define LISTENQ  1024  /* second argument to listen() */
 #define MAXLINE 1024   /* max length of a line */
@@ -38,29 +38,7 @@ typedef struct {
     size_t end;
 } http_request;
 
-typedef struct {
-    const char *extension;
-    const char *mime_type;
-} mime_map;
-
-mime_map meme_types [] = {
-    {".css", "text/css"},
-    {".gif", "image/gif"},
-    {".htm", "text/html"},
-    {".html", "text/html"},
-    {".jpeg", "image/jpeg"},
-    {".jpg", "image/jpeg"},
-    {".ico", "image/x-icon"},
-    {".js", "application/javascript"},
-    {".pdf", "application/pdf"},
-    {".mp4", "video/mp4"},
-    {".png", "image/png"},
-    {".svg", "image/svg+xml"},
-    {".xml", "text/xml"},
-    {NULL, NULL},
-};
-
-char *default_mime_type = "text/plain";
+/*char *default_mime_type = "text/plain";*/
 
 void rio_readinitb(rio_t *rp, int fd){
     rp->rio_fd = fd;
@@ -347,7 +325,7 @@ void serve_static(int out_fd, int in_fd, http_request *req,
 }
 
 void process(int fd, struct sockaddr_in *clientaddr){
-    printf("accept request, fd is %d, pid is %d\n", fd, getpid());
+    printf("accept request, fd is %i, pid is %li\n", fd, getpid());
     http_request req;
     parse_request(fd, &req);
 
