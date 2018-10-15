@@ -1,5 +1,11 @@
 #!/bin/bash
+# For current diretory
+CDir=$(dirname $(readlink -f "$0"))
 
+# Resove the problematics for execution in othes directories
+cd "$CDir"
+
+# Default values
 a="NO"
 b="NO"
 
