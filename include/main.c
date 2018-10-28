@@ -17,10 +17,12 @@
 
 /* Included from the files, we functions */
 #include "mimetypes.h"
+#include "headers.h"
+#include "motor.h"
+#include "errors.h"
+#include "confs.h"
+#include "selectnow.h"
 
-#define LISTENQ  1024  /* second argument to listen() */
-#define MAXLINE 1024   /* max length of a line */
-#define RIO_BUFSIZE 1024
 
 typedef struct {
     int rio_fd;                 /* descriptor for this buf */
@@ -44,24 +46,6 @@ void rio_readinitb(rio_t *rp, int fd){
     rp->rio_fd = fd;
     rp->rio_cnt = 0;
     rp->rio_bufptr = rp->rio_buf;
-}
-
-ssize_t writen(int fd, void *usrbuf, size_t n){
-    size_t nleft = n;
-    ssize_t nwritten;
-    char *bufp = usrbuf;
-
-    while (nleft > 0){
-        if ((nwritten = write(fd, bufp, nleft)) <= 0){
-            if (errno == EINTR)  /* interrupted by sig handler return */
-                nwritten = 0;    /* and call write() again */
-            else
-                return -1;       /* errorno set by write() */
-        }
-        nleft -= nwritten;
-        bufp += nwritten;
-    }
-    return n;
 }
 
 
@@ -138,23 +122,25 @@ void format_size(char* buf, struct stat *stat){
         } else {
             sprintf(buf, "%.1fG", (double)size / 1024 / 1024 / 1024);
         }
-    }
+    
+		}
 }
+
+// Mude ESSA PORRA
 // Manipulation of data in server files
 void handle_directory_request(int out_fd, int dir_fd, char *filename){
     char buf[MAXLINE], m_time[32], size[16];
     struct stat statbuf;
-    sprintf(buf, "HTTP/1.1 200 OK\r\n%s%s%s%s%s",
-            "Content-Type: text/html\r\n\r\n",
-            "<html><head><style>",
-            "body{font-family: medium-content-sans-serif-font,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubuntu,Cantarell,'Open Sans','Helvetica Neue', sans-serif; font-size: 13px;}",
-            "td {padding: 1.5px 6px;}",
-            "</style></head><body><table>\n");
+
+		opendir(filename);
+    sprintf(buf, "HTTP/1.1 200 OK\r\n%s",
+            "Content-Type: text/html;charset=utf-8\r\n\r\n");
     writen(out_fd, buf, strlen(buf));
     DIR *d = fdopendir(dir_fd);
     struct dirent *dp;
     int ffd;
-    while ((dp = readdir(d)) != NULL){
+    while ((dp = readdir(d)) != NULL)
+		{
         if(!strcmp(dp->d_name, ".") || !strcmp(dp->d_name, "..")){
             continue;
         }
@@ -163,46 +149,30 @@ void handle_directory_request(int out_fd, int dir_fd, char *filename){
 						printf("Error in acess this file %s",dp->d_name);
             continue;
         }
-				if (dp->d_name == "index.html")
-				{
-						// Here put functional of print HTML the file index.html		
+				if((strcmp(dp->d_name, "index.html")) == 0)	{
+						sprintf(buf,autoselect("index.html",filename));
+						writen(out_fd, buf, strlen(buf));
 				}
+  	    /*  fstat(ffd, &statbuf);
+  	      strftime(m_time, sizeof(m_time),
+  	               "%Y-%m-%d %H:%M", localtime(&statbuf.st_mtime));
+  	      format_size(size, &statbuf);
 
-        fstat(ffd, &statbuf);
-        strftime(m_time, sizeof(m_time),
-                 "%Y-%m-%d %H:%M", localtime(&statbuf.st_mtime));
-        format_size(size, &statbuf);
-
-        if(S_ISREG(statbuf.st_mode) || S_ISDIR(statbuf.st_mode))
-				{
-						// For terminate the function
-            char *d = S_ISDIR(statbuf.st_mode) ? "/" : "";
-
-            sprintf(buf, "<tr><td><a href=\"%s%s\">%s%s</a></td><td>%s</td><td>%s</td></tr>\n",
-                    dp->d_name, d, dp->d_name, d, m_time, size);
-            writen(out_fd, buf, strlen(buf));
-        }
-        close(ffd);
-    }
-    sprintf(buf, "</table></body></html>");
-    writen(out_fd, buf, strlen(buf));
-    closedir(d);
+	        if(S_ISREG(statbuf.st_mode) || S_ISDIR(statbuf.st_mode))
+					{
+							// For terminate the function
+	            char *d = S_ISDIR(statbuf.st_mode) ? "/" : "";
+	
+    	        sprintf(buf, "<tr><td><a href=\"%s%s\">%s%s</a></td><td>%s</td><td>%s</td></tr>\n",
+    	                dp->d_name, d, dp->d_name, d, m_time, size);
+    	        writen(out_fd, buf, strlen(buf));
+    	    }
+    	    close(ffd);*/
+  	  }
+	    sprintf(buf, "</table></body></html>");
+	    writen(out_fd, buf, strlen(buf));
+	    closedir(d);	
 }
-
-static const char* get_mime_type(char *filename){
-    char *dot = strrchr(filename, '.');
-    if(dot){ // strrchar Locate last occurrence of character in string
-        mime_map *map = meme_types;
-        while(map->extension){
-            if(strcmp(map->extension, dot) == 0){
-                return map->mime_type;
-            }
-            map++;
-        }
-    }
-    return default_mime_type;
-}
-
 
 int open_listenfd(int port){
     int listenfd, optval=1;
@@ -295,14 +265,6 @@ void log_access(int status, struct sockaddr_in *c_addr, http_request *req){
            ntohs(c_addr->sin_port), status, req->filename);
 }
 
-void client_error(int fd, int status, char *msg, char *longmsg){
-    char buf[MAXLINE];
-    sprintf(buf, "HTTP/1.1 %d %s\r\n", status, msg);
-    sprintf(buf + strlen(buf),
-            "Content-length: %lu\r\n\r\n", strlen(longmsg));
-    sprintf(buf + strlen(buf), "%s", longmsg);
-    writen(fd, buf, strlen(buf));
-}
 
 void serve_static(int out_fd, int in_fd, http_request *req,
                   size_t total_size){
@@ -368,7 +330,7 @@ void process(int fd, struct sockaddr_in *clientaddr){
     log_access(status, clientaddr, &req);
 }
 
-int main(int argc, char** argv){
+void main(int argc, char** argv){
     struct sockaddr_in clientaddr;
     int default_port = 9999,
         listenfd,
@@ -423,6 +385,4 @@ int main(int argc, char** argv){
         process(connfd, &clientaddr);
         close(connfd);
     }
-
-    return 0;
 }

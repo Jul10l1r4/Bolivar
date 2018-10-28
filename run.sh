@@ -13,7 +13,9 @@ b="NO"
 function choose {
 	while true; do
 	if [ "$a" = "OK" ] && [ "$b" = "OK" ]; then
-		./main $portServer
+		cd "$rootServer"
+		# run the server of directory root received
+		$CDir/main $portServer
 	fi
 	echo -e """
 	\033[0;32m 
